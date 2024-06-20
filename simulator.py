@@ -26,7 +26,8 @@ class Simulator:
         road = []
         for i in range(5):
             road.append(self.location)
-            self.location = self.location + self.direction * self.speed
+            self.location.x = self.location + self.direction * self.speed
+            self.location.y = self.location + self.direction * self.speed
         self.road = road
         return road
     

@@ -4,7 +4,6 @@ import threading
 import time
 import tkinter as tk
 from tkinter import ttk
-import random
 from location import Location
 from indication import Indication
 from attacker import Attacker
@@ -79,84 +78,83 @@ def start_calculations():
     myLocation = Location(x_myLocation, y_myLocation, height)
     myDrone = drone.drone(myLocation)
 
-    distances_between_att_drone = []
-    angles_between_drone_to_att = []
-    time_for_att = []
-    can_reach = []
-
-    with open('road.csv', mode='r') as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            x_attacker = float(row['x'])
-            y_attacker = float(row['y'])
-            z_attacker = float(row['height'])
-
-            distance = math.sqrt((x_attacker - myLocation.x)**2 + 
-                                 (y_attacker - myLocation.y)**2 + 
-                                 (z_attacker - myLocation.z)**2)
-            distances_between_att_drone.append(distance)
-
-            dx = x_attacker - myLocation.x
-            dy = y_attacker - myLocation.y
-            angle = math.degrees(math.atan2(dy, dx))
-            
-            if angle < 0:
-                angle += 360
-                
-            angles_between_drone_to_att.append(angle)
-
-            time_required = distance / my_speed_mps
-            time_for_att.append(time_required)
-
-            remaining_time = max_time_seconds - indication_time_seconds
-            if time_required <= remaining_time:
-                can_reach.append(True)
-            else:
-                can_reach.append(False)
-
-    print("Distances, angles, and time_for_att calculated successfully.")
-
-    # Continuously check remaining time and update the results file
-    def update_results():
+    def update_reach_status():
         while True:
+            distances_between_att_drone = []
+            angles_between_drone_to_att = []
+            time_for_att = []
+            can_reach = []
+
+            with open('road.csv', mode='r') as file:
+                reader = csv.DictReader(file)
+                for row in reader:
+                    x_attacker = float(row['x'])
+                    y_attacker = float(row['y'])
+                    z_attacker = float(row['height'])
+
+                    distance = math.sqrt((x_attacker - myLocation.x)**2 + 
+                                         (y_attacker - myLocation.y)**2 + 
+                                         (z_attacker - myLocation.z)**2)
+                    distances_between_att_drone.append(distance)
+
+                    dx = x_attacker - myLocation.x
+                    dy = y_attacker - myLocation.y
+                    angle = math.degrees(math.atan2(dy, dx))
+                    
+                    if angle < 0:
+                        angle += 360
+
+                    angles_between_drone_to_att.append(angle)
+
+                    time_required = distance / my_speed_mps
+                    time_for_att.append(time_required)
+
+                    time_attacker_reaches_point = int(row['time'])
+                    remaining_time = time_attacker_reaches_point - indication_time_seconds
+                    if time_required <= remaining_time:
+                        can_reach.append(True)
+                    else:
+                        can_reach.append(False)
+
             with open('results.csv', mode='w', newline='') as file:
                 writer = csv.writer(file)
                 writer.writerow(['time', 'distance', 'angle', 'time_required', 'remaining_time', 'can_reach'])
 
                 time_seconds = 0
                 for distance, angle, time_required, reach in zip(distances_between_att_drone, angles_between_drone_to_att, time_for_att, can_reach):
-                    remaining_time = max_time_seconds - indication_time_seconds
+                    time_attacker_reaches_point = time_seconds
+                    remaining_time = time_attacker_reaches_point - indication_time_seconds
                     reach = time_required <= remaining_time
                     writer.writerow([time_seconds, distance, angle, time_required, remaining_time, reach])
                     time_seconds += 1
 
             time.sleep(1)
 
-    results_thread = threading.Thread(target=update_results)
+    results_thread = threading.Thread(target=update_reach_status)
     results_thread.daemon = True
     results_thread.start()
 
     print("results.csv created successfully and will be updated in real-time.")
     result_label.config(text="Calculations complete, results.csv created and updated in real-time.")
-
-    # Display 10 random possible solutions
-    def display_possible_solutions():
-        possible_solutions = [i for i, reach in enumerate(can_reach) if reach]
-        if len(possible_solutions) == 0:
-            solutions_label.config(text="No solutions can reach the attacker in time.")
-        else:
-            random_solutions = random.sample(possible_solutions, min(10, len(possible_solutions)))
-            solutions_text = "Possible solutions (random 10):\n"
-            with open('results.csv', mode='r') as file:
-                reader = csv.DictReader(file)
-                for i, row in enumerate(reader):
-                    if i in random_solutions:
-                        solutions_text += f"Time: {row['time']}, Distance: {row['distance']}, Angle: {row['angle']}, Time Required: {row['time_required']}, Remaining Time: {row['remaining_time']}\n"
-            solutions_label.config(text=solutions_text)
-
     display_possible_solutions()
-
     display_results()
+
+def display_possible_solutions():
+    possible_solutions = []
+    with open('results.csv', mode='r') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            if row['can_reach'] == 'True' and int(row['remaining_time']) >= 10:
+                possible_solutions.append(row)
+
+    if len(possible_solutions) == 0:
+        solutions_label.config(text="No solutions can reach the attacker in time.")
+    else:
+        solutions_text = "Possible solutions (10 with at least 10 seconds remaining):\n"
+        for solution in possible_solutions[:10]:
+            solutions_text += f"Time: {solution['time']}, Distance: {solution['distance']}, Angle: {solution['angle']}, Time Required: {solution['time_required']}, Remaining Time: {solution['remaining_time']}\n"
+        print(solutions_text)
+        solutions_label.config(text=solutions_text)
 
 def display_results():
     results_window = tk.Toplevel(app)
@@ -200,48 +198,52 @@ style.configure("TLabel", font=("Segoe UI", 12), background='#f0f0f0')
 style.configure("TEntry", font=("Segoe UI", 12))
 style.configure("TButton", font=("Segoe UI", 12, "bold"), foreground='#ffffff', background='#0078d7')
 
-frame = tk.Frame(app, bg='#0078d7', bd=5)
-frame.place(relx=0.5, rely=0.1, relwidth=0.75, relheight=0.7, anchor='n')
+# Attacker Frame
+attacker_frame = tk.LabelFrame(app, text="Attacker", bg='#0078d7', fg='#ffffff', font=("Segoe UI", 14, "bold"), bd=5)
+attacker_frame.place(relx=0.5, rely=0.1, relwidth=0.75, relheight=0.35, anchor='n')
 
-miz_label = ttk.Label(frame, text="Attacker's Miz:")
+miz_label = ttk.Label(attacker_frame, text="Attacker's Miz:")
 miz_label.grid(row=0, column=0, padx=10, pady=5, sticky='e')
-miz_entry = ttk.Entry(frame)
+miz_entry = ttk.Entry(attacker_frame)
 miz_entry.grid(row=0, column=1, padx=10, pady=5, sticky='w')
 
-north_label = ttk.Label(frame, text="Attacker's North:")
+north_label = ttk.Label(attacker_frame, text="Attacker's North:")
 north_label.grid(row=1, column=0, padx=10, pady=5, sticky='e')
-north_entry = ttk.Entry(frame)
+north_entry = ttk.Entry(attacker_frame)
 north_entry.grid(row=1, column=1, padx=10, pady=5, sticky='w')
 
-direction_label = ttk.Label(frame, text="Direction (in degrees):")
+direction_label = ttk.Label(attacker_frame, text="Direction (in degrees):")
 direction_label.grid(row=2, column=0, padx=10, pady=5, sticky='e')
-direction_entry = ttk.Entry(frame)
+direction_entry = ttk.Entry(attacker_frame)
 direction_entry.grid(row=2, column=1, padx=10, pady=5, sticky='w')
 
+# Drone Frame
+drone_frame = tk.LabelFrame(app, text="Drone", bg='#0078d7', fg='#ffffff', font=("Segoe UI", 14, "bold"), bd=5)
+drone_frame.place(relx=0.5, rely=0.5, relwidth=0.75, relheight=0.35, anchor='n')
 
+x_location_label = ttk.Label(drone_frame, text="Your x location:")
+x_location_label.grid(row=0, column=0, padx=10, pady=5, sticky='e')
+x_location_entry = ttk.Entry(drone_frame)
+x_location_entry.grid(row=0, column=1, padx=10, pady=5, sticky='w')
 
-x_location_label = ttk.Label(frame, text="Your x location:")
-x_location_label.grid(row=3, column=0, padx=10, pady=5, sticky='e')
-x_location_entry = ttk.Entry(frame)
-x_location_entry.grid(row=3, column=1, padx=10, pady=5, sticky='w')
+y_location_label = ttk.Label(drone_frame, text="Your y location:")
+y_location_label.grid(row=1, column=0, padx=10, pady=5, sticky='e')
+y_location_entry = ttk.Entry(drone_frame)
+y_location_entry.grid(row=1, column=1, padx=10, pady=5, sticky='w')
 
-y_location_label = ttk.Label(frame, text="Your y location:")
-y_location_label.grid(row=4, column=0, padx=10, pady=5, sticky='e')
-y_location_entry = ttk.Entry(frame)
-y_location_entry.grid(row=4, column=1, padx=10, pady=5, sticky='w')
-
-height_label = ttk.Label(frame, text="Your height location:")
-height_label.grid(row=5, column=0, padx=10, pady=5, sticky='e')
-height_entry = ttk.Entry(frame)
-height_entry.grid(row=5, column=1, padx=10, pady=5, sticky='w')
+height_label = ttk.Label(drone_frame, text="Your height location:")
+height_label.grid(row=2, column=0, padx=10, pady=5, sticky='e')
+height_entry = ttk.Entry(drone_frame)
+height_entry.grid(row=2, column=1, padx=10, pady=5, sticky='w')
 
 start_button = ttk.Button(app, text="Start Calculations", command=start_calculations)
-start_button.place(relx=0.5, rely=0.8, anchor='center')
+start_button.place(relx=0.5, rely=0.9, anchor='center')
 
 result_label = ttk.Label(app, text="", background='#f0f0f0', font=("Segoe UI", 12, "bold"))
-result_label.place(relx=0.5, rely=0.9, anchor='center')
+result_label.place(relx=0.5, rely=0.95, anchor='center')
 
 solutions_label = ttk.Label(app, text="", background='#f0f0f0', font=("Segoe UI", 12))
-solutions_label.place(relx=0.5, rely=0.95, anchor='center')
+solutions_label.place(relx=0.5, rely=1, anchor='center')
 
 app.mainloop()
+

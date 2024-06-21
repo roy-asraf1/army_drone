@@ -166,16 +166,21 @@ def display_results():
 
     def update_results_text():
         while True:
-            results_text.config(state='normal')
-            results_text.delete('1.0', tk.END)
-            with open('results.csv', mode='r') as file:
-                reader = csv.DictReader(file)
-                for row in reader:
-                    if int(row['remaining_time']) >= 20:
-                        results_text.insert('end', f"Time: {row['time']}, Distance: {row['distance']}, Angle: {row['angle']}, Time Required: {row['time_required']}, Remaining Time: {row['remaining_time']}\n", 'bold')
-                    else:
-                        results_text.insert('end', f"Time: {row['time']}, Distance: {row['distance']}, Angle: {row['angle']}, Time Required: {row['time_required']}, Remaining Time: {row['remaining_time']}\n")
-            results_text.config(state='disabled')
+            if not results_text.winfo_exists():
+                break
+            try:
+                results_text.config(state='normal')
+                results_text.delete('1.0', tk.END)
+                with open('results.csv', mode='r') as file:
+                    reader = csv.DictReader(file)
+                    for row in reader:
+                        if int(row['remaining_time']) >= 20:
+                            results_text.insert('end', f"Time: {row['time']}, Distance: {row['distance']}, Angle: {row['angle']}, Time Required: {row['time_required']}, Remaining Time: {row['remaining_time']}\n", 'bold')
+                        else:
+                            results_text.insert('end', f"Time: {row['time']}, Distance: {row['distance']}, Angle: {row['angle']}, Time Required: {row['time_required']}, Remaining Time: {row['remaining_time']}\n")
+                results_text.config(state='disabled')
+            except tk.TclError:
+                break
             time.sleep(1)
 
     results_text_thread = threading.Thread(target=update_results_text)
@@ -210,12 +215,18 @@ miz_entry.grid(row=0, column=1, padx=10, pady=5, sticky='w')
 north_label = ttk.Label(attacker_frame, text="Attacker's North:")
 north_label.grid(row=1, column=0, padx=10, pady=5, sticky='e')
 north_entry = ttk.Entry(attacker_frame)
+north_entry = ttk.Entry(attacker_frame)
 north_entry.grid(row=1, column=1, padx=10, pady=5, sticky='w')
 
 direction_label = ttk.Label(attacker_frame, text="Direction (in degrees):")
 direction_label.grid(row=2, column=0, padx=10, pady=5, sticky='e')
 direction_entry = ttk.Entry(attacker_frame)
 direction_entry.grid(row=2, column=1, padx=10, pady=5, sticky='w')
+
+attacker_height_label = ttk.Label(attacker_frame, text="Attacker's Height:")
+attacker_height_label.grid(row=3, column=0, padx=10, pady=5, sticky='e')
+attacker_height_entry = ttk.Entry(attacker_frame)
+attacker_height_entry.grid(row=3, column=1, padx=10, pady=5, sticky='w')
 
 # Drone Frame
 drone_frame = tk.LabelFrame(app, text="Drone", bg='#0078d7', fg='#ffffff', font=("Segoe UI", 14, "bold"), bd=5)

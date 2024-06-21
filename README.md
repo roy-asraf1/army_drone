@@ -26,9 +26,10 @@ Setup: Ensure you have Python 3.x installed on your machine. Install the require
 
 ## Running the Script:
 
-Navigate to the project directory.
+In the terminal:
 python simulator.py
 
 ## Cleaning Up:
-To remove all generated CSV files, execute the dell.sh script:
+To remove all generated CSV files:
+In the terminal
 ./dell.sh

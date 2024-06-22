@@ -31,6 +31,12 @@ def start_calculations(): # Start the calculations
         x = float(miz_entry.get()) # Get the x value
         y = float(north_entry.get()) # Get the y value
         direction = float(direction_entry.get()) # Get the direction value
+        
+        if direction <180 and direction>0:
+            direction-=90   
+        elif direction >180 and direction<360:
+            direction= 270-direction
+            
     except ValueError:
         result_label.config(text="Invalid input. Please enter numeric values.") # Display an error message
         return
@@ -52,10 +58,26 @@ def start_calculations(): # Start the calculations
         time_seconds = 0 # Set the time to 0
         current_x = x # Set the current x value
         current_y = y # Set the current y value
+        
+        changemiz = 60*math.cos(direction_rad)
+        changenorth = 60*math.sin(direction_rad)
+        print("-------------------------------")
+        print(direction)
+        print("-------------------------------")
+        print(changemiz)
+        print("-------------------------------")
+        print(changenorth)
+        print("-------------------------------")
+        
 
         for _ in range(attacker.duration_seconds): # Loop through the duration of the attacker
-            current_x += attacker.speed_mps * math.cos(direction_rad) # Update the x value
-            current_y += attacker.speed_mps * math.sin(direction_rad) # Update the y value
+            # current_x += attacker.speed_mps * math.cos(direction_rad) # Update the x value
+            # current_y += attacker.speed_mps * math.sin(direction_rad) # Update the y value
+            
+            # current_x += attacker.speed_mps * math.cos(direction) # Update the x value
+            # current_y += attacker.speed_mps * math.sin(direction) # Update the y value
+            current_x += changemiz # Update the x value
+            current_y += changenorth # Update the y value
             current_z = attacker.height # Set the z value to the attacker's height
             writer.writerow([time_seconds, current_x, current_y, current_z]) 
             time_seconds += 1 
@@ -71,6 +93,7 @@ def start_calculations(): # Start the calculations
         x_myLocation = float(x_location_entry.get()) # Get the x value
         y_myLocation = float(y_location_entry.get()) # Get the y value
         height = float(height_entry.get()) # Get the height value
+        
     except ValueError:
         result_label.config(text="Invalid input. Please enter correct values.")
         return
@@ -93,9 +116,8 @@ def start_calculations(): # Start the calculations
                     y_attacker = float(row['y'])
                     z_attacker = float(row['height'])
 
-                    distance = math.sqrt((x_attacker - myLocation.x)**2 + 
-                                         (y_attacker - myLocation.y)**2 + 
-                                         (z_attacker - myLocation.z)**2)
+                    other_location = Location(x_attacker, y_attacker, z_attacker)
+                    distance = myLocation.distance(other_location)
                     distances_between_att_drone.append(distance) 
 
                     dx = x_attacker - myLocation.x 

@@ -7,21 +7,5 @@ class Location:
     def __str__(self):
         return f"({self.x:.3f}, {self.y:.3f})"
     
-    #get and set methods
-    def get_x(self):
-        return self.x
-    
-    def set_x(self, x):
-        self.x = x
-        
-    def get_y(self):
-        return self.y
-    
-    def set_y(self, y):
-        self.y = y
-        
-    def get_z(self):
-        return self.z
-    
-    def set_z(self, z):
-        self.z = z
+    def distance(self, other):
+        return ((self.x - other.x)**2 + (self.y - other.y)**2 +(self.z -other.z)**2)**0.5

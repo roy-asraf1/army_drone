@@ -30,12 +30,13 @@ def start_calculations(): # Start the calculations
     try:
         x = float(miz_entry.get()) # Get the x value
         y = float(north_entry.get()) # Get the y value
-        direction = float(direction_entry.get()) # Get the direction value
+        direction = float(direction_entry.get()) # Get the calc_angle value
+        calc_angle = direction
         
-        if direction <180 and direction>0:
-            direction-=90   
-        elif direction >180 and direction<360:
-            direction= 270-direction
+        if calc_angle <180 and calc_angle>0:
+            calc_angle-=90   
+        elif calc_angle >180 and calc_angle<360:
+            calc_angle= 270-calc_angle
             
     except ValueError:
         result_label.config(text="Invalid input. Please enter numeric values.") # Display an error message
@@ -47,8 +48,8 @@ def start_calculations(): # Start the calculations
 
     z = 1500 # Set the z value to 1500
     first_location = Location(x, y, z) # Create a new location object for the attacker
-    direction_rad = math.radians(direction) # Convert the direction to radians
-    indication = Indication(first_location, direction) # Create a new indication object
+    direction_rad = math.radians(calc_angle) # Convert the calc_angle to radians
+    indication = Indication(first_location, calc_angle) # Create a new indication object
     attacker = Attacker(indication)  # Attacker object
 
     with open('road.csv', mode='w', newline='') as file: # Open the road.csv file
@@ -61,28 +62,33 @@ def start_calculations(): # Start the calculations
         
         changemiz = 60*math.cos(direction_rad)
         changenorth = 60*math.sin(direction_rad)
-        print("-------------------------------")
-        print(direction)
-        print("-------------------------------")
-        print(changemiz)
-        print("-------------------------------")
-        print(changenorth)
-        print("-------------------------------")
         
 
         for _ in range(attacker.duration_seconds): # Loop through the duration of the attacker
-            # current_x += attacker.speed_mps * math.cos(direction_rad) # Update the x value
-            # current_y += attacker.speed_mps * math.sin(direction_rad) # Update the y value
+            if direction<=90 and direction>=0:
+                current_x += changemiz # Update the x value
+                current_y += changenorth # Update the y value
+                current_z = attacker.height # Set the z value to the attacker's height  
+                 
+            elif  direction>90 and direction<=180:
+                current_x += changemiz # Update the x value
+                current_y -= changenorth # Update the y value
+                current_z = attacker.height # Set the z value to the attacker's height
+                
+            elif  direction<=270 and direction>180:
+                current_x -= changemiz # Update the x value
+                current_y -= changenorth # Update the y value
+                current_z = attacker.height # Set the z value to the attacker's height
+                
+            else:
+                current_x -= changemiz # Update the x value
+                current_y += changenorth # Update the y value
+                current_z = attacker.height # Set the z value to the attacker's height
             
-            # current_x += attacker.speed_mps * math.cos(direction) # Update the x value
-            # current_y += attacker.speed_mps * math.sin(direction) # Update the y value
-            current_x += changemiz # Update the x value
-            current_y += changenorth # Update the y value
-            current_z = attacker.height # Set the z value to the attacker's height
             writer.writerow([time_seconds, current_x, current_y, current_z]) 
             time_seconds += 1 
 
-    print("road.csv created successfully :)")
+    print("road.csv created successfully :) -------- roy asraf the king")
 
     # Start the thread to update the time since indication
     time_thread = threading.Thread(target=update_time_since_indication) # Create a new thread
@@ -112,20 +118,24 @@ def start_calculations(): # Start the calculations
             with open('road.csv', mode='r') as file:
                 reader = csv.DictReader(file) 
                 for row in reader:
-                    x_attacker = float(row['x'])
-                    y_attacker = float(row['y'])
+                    x_attacker = float(row['x']) #need to fix this its not working the location of the attacker in the x on the y
+                    y_attacker = float(row['y']) #the angle we need is when the remaining time is true
                     z_attacker = float(row['height'])
 
                     other_location = Location(x_attacker, y_attacker, z_attacker)
                     distance = myLocation.distance(other_location)
+                    
                     distances_between_att_drone.append(distance) 
-
+                    print(myLocation.x,myLocation.y,x_attacker,y_attacker) #need to fix this its not working 
                     dx = x_attacker - myLocation.x 
                     dy = y_attacker - myLocation.y
+                    
                     angle_horizontal = math.degrees(math.atan2(dy, dx)) 
                     
                     if angle_horizontal < 0:
                         angle_horizontal += 360
+                    
+                    # angle_horizontal = (angle_horizontal*6400)/360 #alpiyot
 
                     angles_between_drone_to_att.append(angle_horizontal)
 
@@ -144,6 +154,7 @@ def start_calculations(): # Start the calculations
                         can_reach.append(True)
                     else:
                         can_reach.append(False)
+                        
 
             with open('results.csv', mode='w', newline='') as file:
                 writer = csv.writer(file)
@@ -151,9 +162,10 @@ def start_calculations(): # Start the calculations
 
                 time_seconds = 0
                 for distance, angle_horizontal, angle_vertical, time_required, reach in zip(distances_between_att_drone, angles_between_drone_to_att, angles_vertical_between_drone_to_att, time_for_att, can_reach):
+                    
                     time_attacker_reaches_point = time_seconds
                     remaining_time = time_attacker_reaches_point - indication_time_seconds
-                    reach = time_required <= remaining_time
+                    reach = (time_required <= remaining_time) #true or false
                     writer.writerow([time_seconds, distance, angle_horizontal, angle_vertical, time_required, remaining_time, reach])
                     time_seconds += 1
 

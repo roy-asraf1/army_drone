@@ -8,6 +8,7 @@ from location import Location
 from indication import Indication
 from attacker import Attacker
 import drone
+import pandas as pd
 
 MINIMUM = 100000
 MAXIMUM = 999999
@@ -54,11 +55,12 @@ def start_calculations(): # Start the calculations
 
     with open('road.csv', mode='w', newline='') as file: # Open the road.csv file
         writer = csv.writer(file) # Create a CSV writer
-        writer.writerow(['time', 'x', 'y', 'height']) # Write the header row
+        writer.writerow(['time', 'x', 'y','height']) # Write the header row
 
         time_seconds = 0 # Set the time to 0
         current_x = x # Set the current x value
         current_y = y # Set the current y value
+        distance=0
         
         changemiz = 60*math.cos(direction_rad)
         changenorth = 60*math.sin(direction_rad)
@@ -66,29 +68,34 @@ def start_calculations(): # Start the calculations
 
         for _ in range(attacker.duration_seconds): # Loop through the duration of the attacker
             if direction<=90 and direction>=0:
-                current_x += changemiz # Update the x value
+
+                current_x += changemiz # Update the x value   
                 current_y += changenorth # Update the y value
-                current_z = attacker.height # Set the z value to the attacker's height  
+                current_z = attacker.height # Set the z value to the attacker's height 
+                 
                  
             elif  direction>90 and direction<=180:
                 current_x += changemiz # Update the x value
                 current_y -= changenorth # Update the y value
                 current_z = attacker.height # Set the z value to the attacker's height
                 
+                
             elif  direction<=270 and direction>180:
                 current_x -= changemiz # Update the x value
                 current_y -= changenorth # Update the y value
                 current_z = attacker.height # Set the z value to the attacker's height
                 
+                
             else:
                 current_x -= changemiz # Update the x value
                 current_y += changenorth # Update the y value
                 current_z = attacker.height # Set the z value to the attacker's height
+                
             
             writer.writerow([time_seconds, current_x, current_y, current_z]) 
             time_seconds += 1 
-
-    print("road.csv created successfully :) -------- roy asraf the king")
+        
+    print("road.csv created successfully :)")
 
     # Start the thread to update the time since indication
     time_thread = threading.Thread(target=update_time_since_indication) # Create a new thread
@@ -115,59 +122,55 @@ def start_calculations(): # Start the calculations
             time_for_att = []
             can_reach = []
 
-            with open('road.csv', mode='r') as file:
-                reader = csv.DictReader(file) 
-                for row in reader:
-                    x_attacker = float(row['x']) #need to fix this its not working the location of the attacker in the x on the y
-                    y_attacker = float(row['y']) #the angle we need is when the remaining time is true
-                    z_attacker = float(row['height'])
-
-                    other_location = Location(x_attacker, y_attacker, z_attacker)
-                    distance = myLocation.distance(other_location)
+            df = pd.read_csv('road.csv')
+            df['dx'] = abs(df['x'] - myLocation.x)
+            df['dy'] = abs(df['y'] - myLocation.y)
+            df['distance'] = (df['dx']**2 + df['dy']**2 + (df['height'] - myLocation.z)**2)**0.5
+            print(df)
+            
+            for index, row in df.iterrows():
+                distance = row['distance']
+                distances_between_att_drone.append(distance)
+                
+                dx = row['dx']
+                dy = row['dy']
+                
+                
+                angle_horizontal = math.degrees(math.atan2(dx, dy)) #need to add ifs
+                #angle_horizontal = math.degrees(math.atan2(dy, dx)) #need to add ifs
+                
+                if angle_horizontal < 0:
+                    angle_horizontal += 360
+                
+                angles_between_drone_to_att.append(angle_horizontal)
+                
+                dz = row['height'] - myLocation.z
+                distance_horizontal = math.sqrt(dx**2 + dy**2)
+                angle_vertical = math.degrees(math.atan2(dz, distance_horizontal))
+                
+                angles_vertical_between_drone_to_att.append(angle_vertical)
+                
+                time_required = distance / my_speed_mps
+                time_for_att.append(time_required)
+                
+                remaining_time = int(row['time']) - indication_time_seconds # int(row['time']) is the seconds for each location
+                if time_required <= remaining_time:
+                    can_reach.append(True)
+                else:
+                    can_reach.append(False)
+                    #need to delete the roe that have false in the csv file
+              
                     
-                    distances_between_att_drone.append(distance) 
-                    print(myLocation.x,myLocation.y,x_attacker,y_attacker) #need to fix this its not working 
-                    dx = x_attacker - myLocation.x 
-                    dy = y_attacker - myLocation.y
-                    
-                    angle_horizontal = math.degrees(math.atan2(dy, dx)) 
-                    
-                    if angle_horizontal < 0:
-                        angle_horizontal += 360
-                    
-                    # angle_horizontal = (angle_horizontal*6400)/360 #alpiyot
-
-                    angles_between_drone_to_att.append(angle_horizontal)
-
-                    dz = z_attacker - myLocation.z
-                    distance_horizontal = math.sqrt(dx**2 + dy**2)  # horizontal distance
-                    angle_vertical = math.degrees(math.atan2(dz, distance_horizontal)) # vertical angle
-
-                    angles_vertical_between_drone_to_att.append(angle_vertical)
-
-                    time_required = distance / my_speed_mps
-                    time_for_att.append(time_required)
-
-                    time_attacker_reaches_point = int(row['time'])
-                    remaining_time = time_attacker_reaches_point - indication_time_seconds
-                    if time_required <= remaining_time:
-                        can_reach.append(True)
-                    else:
-                        can_reach.append(False)
-                        
 
             with open('results.csv', mode='w', newline='') as file:
                 writer = csv.writer(file)
                 writer.writerow(['time', 'distance', 'angle_horizontal', 'angle_vertical', 'time_required', 'remaining_time', 'can_reach'])
-
-                time_seconds = 0
-                for distance, angle_horizontal, angle_vertical, time_required, reach in zip(distances_between_att_drone, angles_between_drone_to_att, angles_vertical_between_drone_to_att, time_for_att, can_reach):
-                    
-                    time_attacker_reaches_point = time_seconds
-                    remaining_time = time_attacker_reaches_point - indication_time_seconds
-                    reach = (time_required <= remaining_time) #true or false
+                
+                for time_seconds, distance, angle_horizontal, angle_vertical, time_required, reach in zip(df['time'], distances_between_att_drone, angles_between_drone_to_att, angles_vertical_between_drone_to_att, time_for_att, can_reach):
+                    remaining_time = time_seconds - indication_time_seconds
+                    reach = (time_required <= remaining_time)
                     writer.writerow([time_seconds, distance, angle_horizontal, angle_vertical, time_required, remaining_time, reach])
-                    time_seconds += 1
+
 
             time.sleep(1)
 

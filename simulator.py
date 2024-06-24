@@ -13,6 +13,15 @@ import pandas as pd
 MINIMUM = 100000
 MAXIMUM = 999999
 
+'''
+need to add a butomn for ready_for_road and after that its will show us 
+need to add the toime of the indication
+
+'''
+time.timezone
+
+
+
 # Constants
 my_speed_kmh = 120  # our speed in km/h
 my_speed_mps = my_speed_kmh * 1000 / 3600  # our speed in meters per second
@@ -91,6 +100,9 @@ def start_calculations(): # Start the calculations
                 current_y += changenorth # Update the y value
                 current_z = attacker.height # Set the z value to the attacker's height
                 
+            current_x =int(current_x)
+            current_y =int(current_y)
+            current_z = int(current_z)
             
             writer.writerow([time_seconds, current_x, current_y, current_z]) 
             time_seconds += 1 
@@ -149,8 +161,7 @@ def start_calculations(): # Start the calculations
                 angle_vertical = math.degrees(math.atan2(dz, distance_horizontal))
                 
                 angles_vertical_between_drone_to_att.append(angle_vertical)
-                
-                time_required = distance / my_speed_mps
+                time_required = distance / 60
                 time_for_att.append(time_required)
                 
                 remaining_time = int(row['time']) - indication_time_seconds # int(row['time']) is the seconds for each location
@@ -188,17 +199,18 @@ def display_possible_solutions():
     with open('results.csv', mode='r') as file:
         reader = csv.DictReader(file)
         for row in reader:
-            if row['can_reach'] == 'True' and int(row['remaining_time']) >= 10:
+            if row['can_reach'] == 'True':
                 possible_solutions.append(row)
 
-    if len(possible_solutions) == 0:
-        solutions_label.config(text="No solutions can reach the attacker in time.")
-    else:
-        solutions_text = "Possible solutions (10 with at least 10 seconds remaining):\n"
+    if len(possible_solutions) != 0:
+        solutions_text = "Possible solutions :\n"
         for solution in possible_solutions[:10]:
             solutions_text += f"Time: {solution['time']}, Distance: {solution['distance']}, Angle degrees: {solution['angle_horizontal']}, Angle Vertical: {solution['angle_vertical']}, Time Required: {solution['time_required']}, Remaining Time: {solution['remaining_time']}\n"
         print(solutions_text)
         solutions_label.config(text=solutions_text)
+        
+    else:
+        solutions_label.config(text="No solutions can reach the attacker in time.")
 
 def display_results():
     results_window = tk.Toplevel(app)

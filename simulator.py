@@ -13,11 +13,6 @@ import pandas as pd
 MINIMUM = 100000
 MAXIMUM = 999999
 
-'''
-need to add a butomn for ready_for_road and after that its will show us 
-need to add the toime of the indication
-
-'''
 time.timezone
 
 # Time since indication for the thread

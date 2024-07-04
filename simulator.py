@@ -10,13 +10,14 @@ from attacker import Attacker
 import drone
 import pandas as pd
 
+# globals 
 MINIMUM = 100000
 MAXIMUM = 999999
-
-time.timezone
-
 # Time since indication for the thread
 indication_time_seconds = 0
+time.timezone
+
+
 
 def update_time_since_indication(): # Update the time since indication
     global indication_time_seconds # Use the global variable
@@ -26,6 +27,7 @@ def update_time_since_indication(): # Update the time since indication
 
 def start_calculations(): # Start the calculations
     try:
+        #inputs of the attacker
         x = float(miz_entry.get()) # Get the x value
         y = float(north_entry.get()) # Get the y value
         attacker_speed_mps = float(speed_entry.get()) # Get the attacker's speed
@@ -59,7 +61,7 @@ def start_calculations(): # Start the calculations
         time_seconds = 0 # Set the time to 0
         current_x = x # Set the current x value
         current_y = y # Set the current y value
-        distance=0
+        
         
         changemiz = attacker_speed_mps * math.cos(direction_rad)
         changenorth = attacker_speed_mps * math.sin(direction_rad)        
@@ -114,11 +116,11 @@ def start_calculations(): # Start the calculations
     myLocation = Location(x_myLocation, y_myLocation, height) # Create a new location object for the dron
 
     def update_reach_status(): # Update the reach status
-        attacker_speed_mps = float(speed_entry.get()) # Get the attacker's speed
+        drone_speed_mps = 60
         while True:
             distances_between_att_drone = [] 
             angles_between_drone_to_att = []
-            angles_vertical_between_drone_to_att = []
+            #angles_vertical_between_drone_to_att = []
             time_for_att = []
             can_reach = []
 
@@ -149,7 +151,7 @@ def start_calculations(): # Start the calculations
                 #angle_vertical = math.degrees(math.atan2(dz, distance_horizontal))
                 
                 #angles_vertical_between_drone_to_att.append(angle_vertical)
-                time_required = distance / attacker_speed_mps 
+                time_required = distance / drone_speed_mps 
 
                 time_for_att.append(time_required)
                 
@@ -168,7 +170,7 @@ def start_calculations(): # Start the calculations
                 
                 for time_seconds, distance, angle_horizontal,  time_required, reach in zip(df['time'], distances_between_att_drone, angles_between_drone_to_att, time_for_att, can_reach):
                     remaining_time = time_seconds - indication_time_seconds
-                    if time_required < remaining_time:
+                    if time_required <= remaining_time:
                         reach = True
                     else:
                         reach = False 
@@ -202,7 +204,7 @@ def display_possible_solutions():
         solutions_label.config(text=solutions_text)
         
     else:
-        solutions_label.config(text="No solutions can reach the attacker in time.")
+        solutions_label.config(text="see the results.csv file answers")
 
 def take_off():
     if not additional_time_entry.get():
@@ -221,7 +223,7 @@ def take_off():
 def display_results():
     results_window = tk.Toplevel(app)
     results_window.title("Results")
-    results_window.geometry("800x600")
+    results_window.geometry("1000x800")
 
     results_text = tk.Text(results_window, font=("Segoe UI", 12))
     results_text.pack(expand=True, fill='both')
@@ -237,9 +239,9 @@ def display_results():
                     reader = csv.DictReader(file)
                     for row in reader:
                         if row['can_reach'] == 'True':
-                            results_text.insert('end', f"Time: {row['time']}, Distance: {row['distance']}, Angle Horizontal: {row['angle_horizontal']}, Time Required: {row['time_required']}, Remaining Time: {row['remaining_time']}\n", 'bold')
+                            results_text.insert('end', f"Time: {row['time']}, Distance: {row['distance']}, Angle Horizontal: {row['angle_horizontal']}, Time Required: {row['time_required']}, Remaining Time: {row['remaining_time']},{row['can_reach']} \n", 'bold')
                         else:
-                            results_text.insert('end', f"Time: {row['time']}, Distance: {row['distance']}, Angle Horizontal: {row['angle_horizontal']}, Time Required: {row['time_required']}, Remaining Time: {row['remaining_time']}\n")
+                            results_text.insert('end', f"Time: {row['time']}, Distance: {row['distance']}, Angle Horizontal: {row['angle_horizontal']}, Time Required: {row['time_required']}, Remaining Time: {row['remaining_time']}, {row['can_reach']}\n")
                 results_text.config(state='disabled')
             except tk.TclError:
                 break
@@ -256,8 +258,8 @@ def display_results():
     results_window.mainloop()
 
 app = tk.Tk()
-app.title("Attacker Tracker")
-app.geometry("800x600")
+app.title("Attacker Tracker by forum movil")
+app.geometry("1000x800")
 app.configure(bg='#f0f0f0')
 
 style = ttk.Style()
